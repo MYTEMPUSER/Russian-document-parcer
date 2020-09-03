@@ -1,19 +1,17 @@
-from Parce_INN import INN_parcer
+from Parse_INN import INN_parser
 from PIL import Image
 from convert_PDF_TO_JPG import pdf_to_images
 import pytesseract
+import os 
 
+#file = "INN_with_cells/Ian_INN.pdf" 
+parser = INN_parser()
+#parser.set_image(file)
+#parser.find_INN()
 
-file = "INN (5).jpg"
-custom_oem_psm_config_one_char = r'--oem 1 --psm 7'
-#pdf_to_images("romashko_inn.PDF")
-
-#img = Image.open(file)
-
-#text = pytesseract.image_to_string(img, 'rus', config=custom_oem_psm_config_one_char)
-#print(text)
-
-parcer = INN_parcer()
-parcer.set_image(file)
-parcer.find_INN()
-#parcer.try_find_inn_atomic()
+directory = 'INN_with_cells'  
+files = os.listdir(directory)
+for file in files:
+	parser.set_image(directory + '/' + file)
+	parser.find_INN()
+#parser.try_find_inn_atomic()

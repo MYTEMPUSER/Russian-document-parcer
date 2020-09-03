@@ -12,7 +12,3 @@ def pdf_to_images(pdf_path, pdf_images_dir=None):
     for page in pdf2image.convert_from_path(pdf_path, 200):
         page.save(os.path.join(pdf_images_dir, str(count) + '.jpg'), quality=95)
         count += 1
-    #result = []
-    #for i in range(count):
-    #    result.append(cv2.cvtColor(cv2.imread(os.path.join(pdf_images_dir, str(i) + '.jpg')), cv2.COLOR_BGR2GRAY))
-    #return result

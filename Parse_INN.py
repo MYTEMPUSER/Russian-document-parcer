@@ -130,6 +130,7 @@ class INN_parser:
 					if abs(areas[0][1] - posible_variants[i][1]) < self.MIN_area_size / 2:
 						areas.append(posible_variants[i])
 				areas.sort(key=lambda x: x[0])
+				print(areas)
 				#print(areas)
 				if len(areas) >= self.INN_len:
 					for start_ind in range(len(areas) - 1):
@@ -176,13 +177,23 @@ class INN_parser:
 						#if self.width > 1500: #WHAT IS GOOD Quality?
 						#digit = self.current_cropped_img_pil_BW.crop((self.MIN_x, self.MIN_y, self.MAX_x + 2, self.MAX_y + 2))
 						#else:
-						digit = self.img_pil.crop((self.MIN_x - 1, self.MIN_y - 1, self.MAX_x + 2, self.MAX_y + 2))
+						digit = self.current_cropped_img_pil_BW.crop((self.MIN_x - 1, self.MIN_y - 1, self.MAX_x + 2, self.MAX_y + 2))
+						
+						digit2 = digit.resize((28, 28), Image.ANTIALIAS)
+
+						#self.MAX_area_size = 28
+
 						color_background = digit.getpixel((0,0))
+						img_with_background = digit
+
 						img_with_background = Image.new('RGB', (self.MAX_area_size * 2, self.MAX_area_size * 2),  (255, 255, 255)) #REWORK NO Const
 						img_with_background.paste(digit, (self.MAX_area_size // 2, self.MAX_area_size // 2)) #insert digit to mid
+						
 						custom_oem_psm_config_one_char = r'--oem 1 --psm 10'
 
 						text = pytesseract.image_to_string(img_with_background, 'rus', config=custom_oem_psm_config_one_char)
+						print(text)
+
 						text = self.recover_digits(text)
 						cnt_digits = 0
 						for sym in text:
@@ -200,46 +211,20 @@ class INN_parser:
 								cnt_digits = 1
 						
 						
-						#print(str(self.threshold) + '_' + str(self.MIN_x) + '_' + str(self.MIN_y) + ".jpg: ", text)		
+						#print(str(self.threshold) + '_' + str(self.MIN_x) + '_' + str(self.MIN_y) + ".jpg: ", text)	
+						#digit.save("test/" + str(self.threshold) + '_' + str(int(self.MIN_y / 100)) + '_' + str(self.MIN_x) + ".jpg")	
 						if text.isdigit():
-							#img_with_background.save("test/" + str(self.threshold) + '_' + str(int(self.MIN_y / 100)) + '_' + str(self.MIN_x) + ".jpg")
-							#print("test/" + str(self.threshold) + '_' + str(int(self.MIN_y / 100)) + '_' + str(self.MIN_x) + ".jpg = ", text, "  " + str(self.MIN_y))
+							digit2.save("test/" + "dig" + str(self.threshold) + '_' + str(int(self.MIN_y / 100)) + '_' + str(self.MIN_x) + ".jpg")
+							img_with_background.save("test/" + str(self.threshold) + '_' + str(int(self.MIN_y / 100)) + '_' + str(self.MIN_x) + ".jpg")
+							print("test/" + str(self.threshold) + '_' + str(int(self.MIN_y / 100)) + '_' + str(self.MIN_x) + ".jpg = ", text, "  " + str(self.MIN_y))
 							posible_areas.append([self.MIN_x, self.MIN_y, self.MAX_x, self.MAX_y, text])
+		print(len(posible_areas))
 		res = self.select_areas(posible_areas)[0]
 		if res != '':
 			print(res)
 			return True
 		return False
 
-
-	def try_find_inn_solid_string(self):#IF CANT FIND AREAS WITH DIGITS
-		x_scale = [2, 3]
-		y_scale = [20]
-		offset_x = [0/10, 1/10, 2/10, 3.5/10, 5/10]
-		offset_y = [0/10, 5/10]
-		dict_INN = {}
-		for x_sc in x_scale:
-			for y_sc in y_scale:
-				for off_x in offset_y:
-					for off_y in offset_y:
-						part_sz_x = self.width / x_sc
-						part_sz_y = self.height / y_sc
-						for left_pos in range(int(self.width / part_sz_x)):
-							for top_pos in range(int(self.height // part_sz_y)):
-								area = ((left_pos + off_x)  * part_sz_x, (top_pos + off_y) * part_sz_y, (left_pos + 1 + off_x)  * part_sz_x, (top_pos + 1 + off_y) * part_sz_y)
-								part = self.img_pil.crop(area)
-								text = pytesseract.image_to_string(part, 'rus', config=self.custom_oem_psm_config)
-								text = text.replace(" ", "")
-								if len(text) >= self.INN_len:
-									text = text[-self.INN_len:]
-									text = ''.join([sym for sym in text if sym.isdigit()])
-									if (len(text) == self.INN_len and text.isdigit()):
-										print(text)
-										if not (text in dict_INN):
-											dict_INN[text] = 0 
-										else:
-											print(text)
-											return text
 
 	def find_INN(self):
 		for self.threshold in self.thresholds:

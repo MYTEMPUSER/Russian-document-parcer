@@ -51,7 +51,7 @@ class digit_recognizer ():
             self.model[j].load_weights("models/model" + str(j) + ".h5")
 
     def predict_by_pil(self, img_pil, show = False):
-        return self.predict(img_pil, show)
+        return self.__predict(img_pil, show)
 
     def predict_by_path(self, img_path, show = False):
         img_pil = Image.open(str(i) + ".jpg")
@@ -73,6 +73,7 @@ class digit_recognizer ():
 
         results = [i * 100 for i in results[0]]
         results = [list(map(int, results))]
+        #print(results)
 
         #print(str(results))
         res = np.argmax(results,axis = 1)
@@ -81,13 +82,7 @@ class digit_recognizer ():
         if (results[0][1] > 80):
             results = [1]
         else:
-            if (res == [9] and results[0][4] > 30 * 2):
-                results = [4]
-            else:
-                if (res == [7] and results[0][1] > 60):
-                    results = [1]
-                else:
-                    results = np.argmax(results,axis = 1)
+            results = np.argmax(results,axis = 1)
 
         if (show):
             results = pd.Series(results,name="Label")
@@ -99,8 +94,8 @@ class digit_recognizer ():
                 plt.axis('off')
             plt.subplots_adjust(wspace=0.3, hspace=-0.1)
             plt.show()
-
-        return results[0]
+        #print(results[0])
+        return str(results[0])
 
 #recognizer = digit_recognizer()
 #for i in range(45):

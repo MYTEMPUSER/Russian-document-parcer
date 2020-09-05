@@ -13,6 +13,7 @@ import statistics
 from statistics import mode
 from convert_PDF_TO_JPG import pdf_to_images
 import os
+import digit_recognition as dr
 
 
 sys.setrecursionlimit(100000) 
@@ -35,6 +36,7 @@ class INN_parser:
 		self.ez_INN_pool = []
 		self.INN_validate_coefs1 = [7, 2, 4, 10, 3, 5, 9, 4, 6, 8, 0, 0]
 		self.INN_validate_coefs2 = [3, 7, 2, 4, 10, 3, 5, 9, 4, 6, 8, 0]
+		self.NN_model = dr.digit_recognizer()
 
 	def validate_INN (self, INN):
 		check_sum1 = 0
@@ -59,7 +61,7 @@ class INN_parser:
 		self.img_pil = Image.open(path_to_image)
 		self.img_cv = self.converter.convert_PIL_to_cv2(self.img_pil)
 		self.width, self.height = self.img_pil.size
-		self.MIN_area_size, self.MAX_area_size  = self.height // 200, self.height // 50 #NOT CONSTANT
+		self.MIN_area_size, self.MAX_area_size  = self.height // 400, self.height // 50 #NOT CONSTANT
 		self.variant = []
 
 	def add_to_list (self, INN):
@@ -91,7 +93,7 @@ class INN_parser:
 		return INN
 
 	def check_inner_area(self, MIN_x, MAX_x, MIN_y, MAX_y):
-		return (1 < (MAX_y - MIN_y + 1) / (MAX_x - MIN_x + 1) < 3 and MAX_y - MIN_y > self.MIN_area_size and MAX_y - MIN_y < self.MAX_area_size)
+		return (1 < (MAX_y - MIN_y + 1) / (MAX_x - MIN_x + 1) < 4 and MAX_y - MIN_y > self.MIN_area_size and MAX_y - MIN_y < self.MAX_area_size)
 
 	def check_range(self, i, j, w, h):
 		return not((j >= h) or (i >= w) or (j < 0) or (i < 0))
@@ -126,11 +128,10 @@ class INN_parser:
 			res = ""
 			can_be_INN = []
 			if len(posible_variants) - variant >= 12:
-				for i in range(variant + 1, min(len(posible_variants), variant + 40)):
-					if abs(areas[0][1] - posible_variants[i][1]) < self.MIN_area_size / 2:
+				for i in range(min(variant - 30, 0), min(len(posible_variants), variant + 30)):
+					if abs(areas[0][1] - posible_variants[i][1]) < self.MIN_area_size and areas[0][0] < posible_variants[i][0]:
 						areas.append(posible_variants[i])
 				areas.sort(key=lambda x: x[0])
-				print(areas)
 				#print(areas)
 				if len(areas) >= self.INN_len:
 					for start_ind in range(len(areas) - 1):
@@ -146,13 +147,16 @@ class INN_parser:
 								res_description.append(item)
 						#print(res)
 						if len(res) == self.INN_len and self.validate_INN(res):
-							print(res)
-							return res, res_description
+							if res.count('0') + res.count('8') >= 7:
+								print ("So math 8 and 0: ", res)
+							else:
+								print(res)
+								return res, res_description
 						if len(res) == self.INN_len:
 							print("NOT VALID INN:", res)
 		return "", []
 
-	def start_dfs (self):
+	def start_dfs (self, model_for_digit_recognition = "Teserract"):
 		self.current_cropped_img_pil_BW = self.converter.convert_cv2_to_PIL(self.current_cropped_img_cv)
 		dig_cnt = 0
 		width, height = self.current_cropped_img_pil.size
@@ -173,52 +177,45 @@ class INN_parser:
 						self.dfs(i, j, (random.randint(0, 255)), 0)
 
 					if (self.check_inner_area(self.MIN_x, self.MAX_x, self.MIN_y, self.MAX_y)):
-						#BW if good Quality else ..
-						#if self.width > 1500: #WHAT IS GOOD Quality?
-						#digit = self.current_cropped_img_pil_BW.crop((self.MIN_x, self.MIN_y, self.MAX_x + 2, self.MAX_y + 2))
-						#else:
-						digit = self.current_cropped_img_pil_BW.crop((self.MIN_x - 1, self.MIN_y - 1, self.MAX_x + 2, self.MAX_y + 2))
-						
-						digit2 = digit.resize((28, 28), Image.ANTIALIAS)
+						if (model_for_digit_recognition == "Teserract"):
+							digit = self.current_cropped_img_pil_BW.crop((self.MIN_x - 2, self.MIN_y - 2, self.MAX_x + 2, self.MAX_y + 2))
+							color_background = digit.getpixel((0,0))
+							img_with_background = digit
 
-						#self.MAX_area_size = 28
+							img_with_background = Image.new('RGB', (self.MAX_area_size * 2, self.MAX_area_size * 2),  (255, 255, 255)) #REWORK NO Const
+							img_with_background.paste(digit, (self.MAX_area_size // 2, self.MAX_area_size // 2)) #insert digit to mid
+							
+							custom_oem_psm_config_one_char = r'--oem 1 --psm 10'
 
-						color_background = digit.getpixel((0,0))
-						img_with_background = digit
+							text = pytesseract.image_to_string(img_with_background, 'rus', config=custom_oem_psm_config_one_char)
+							#print(text)
 
-						img_with_background = Image.new('RGB', (self.MAX_area_size * 2, self.MAX_area_size * 2),  (255, 255, 255)) #REWORK NO Const
-						img_with_background.paste(digit, (self.MAX_area_size // 2, self.MAX_area_size // 2)) #insert digit to mid
-						
-						custom_oem_psm_config_one_char = r'--oem 1 --psm 10'
+							text = self.recover_digits(text)
+							cnt_digits = 0
+							for sym in text:
+								if sym.isdigit():
+									cnt_digits += 1
 
-						text = pytesseract.image_to_string(img_with_background, 'rus', config=custom_oem_psm_config_one_char)
-						print(text)
+							for sym in text:
+								if sym.isdigit() and (cnt_digits == 1 or sym != '1'):
+									text = sym
+									break
+								else:
+									cnt_digits = 1
+							#img_with_background.save("test/" + str(self.threshold) + '_' + str(int(self.MIN_y / 100)) + '_' + str(self.MIN_x) + ".jpg")
 
-						text = self.recover_digits(text)
-						cnt_digits = 0
-						for sym in text:
-							if sym.isdigit():
-								cnt_digits += 1
+						if (model_for_digit_recognition == "NN"):
+							digit = self.current_cropped_img_pil_BW.crop((self.MIN_x - 1, self.MIN_y - 1, self.MAX_x + 2, self.MAX_y + 2))
+							digit = digit.resize((28, 28), Image.ANTIALIAS)
+							text = self.NN_model.predict_by_pil(digit)
+							#digit.save("test/" + "dig" + str(self.threshold) + '_' + str(int(self.MIN_y / 100)) + '_' + str(self.MIN_x) + ".jpg")
 
-						#img_with_background.save("test/" + str(self.threshold) + '_' + str(self.MIN_x) + '_' + str(self.MIN_y) + ".jpg")
-						#print(str(self.threshold) + '_' + str(self.MIN_x) + '_' + str(self.MIN_y) + ".jpg: ", text)
-								
-						for sym in text:
-							if sym.isdigit() and (cnt_digits == 1 or sym != '1'):
-								text = sym
-								break
-							else:
-								cnt_digits = 1
-						
-						
-						#print(str(self.threshold) + '_' + str(self.MIN_x) + '_' + str(self.MIN_y) + ".jpg: ", text)	
-						#digit.save("test/" + str(self.threshold) + '_' + str(int(self.MIN_y / 100)) + '_' + str(self.MIN_x) + ".jpg")	
 						if text.isdigit():
-							digit2.save("test/" + "dig" + str(self.threshold) + '_' + str(int(self.MIN_y / 100)) + '_' + str(self.MIN_x) + ".jpg")
-							img_with_background.save("test/" + str(self.threshold) + '_' + str(int(self.MIN_y / 100)) + '_' + str(self.MIN_x) + ".jpg")
-							print("test/" + str(self.threshold) + '_' + str(int(self.MIN_y / 100)) + '_' + str(self.MIN_x) + ".jpg = ", text, "  " + str(self.MIN_y))
+							#print("test/" + str(self.threshold) + '_' + str(int(self.MIN_y / 100)) + '_' + str(self.MIN_x) + ".jpg = ", text, "  " + str(self.MIN_y))
 							posible_areas.append([self.MIN_x, self.MIN_y, self.MAX_x, self.MAX_y, text])
-		print(len(posible_areas))
+
+
+		#print(len(posible_areas))
 		res = self.select_areas(posible_areas)[0]
 		if res != '':
 			print(res)

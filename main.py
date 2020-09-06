@@ -9,7 +9,7 @@ parser = INN_parser()
 #parser.set_image(file)
 #parser.find_INN()
 
-directory = 'INN_with_cells'  
+directory = 'TEST2'  
 files = os.listdir(directory)
 for file in files:
 	parser.set_image(directory + '/' + file)

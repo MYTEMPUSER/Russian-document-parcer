@@ -61,7 +61,7 @@ class INN_parser:
 		self.img_pil = Image.open(path_to_image)
 		self.img_cv = self.converter.convert_PIL_to_cv2(self.img_pil)
 		self.width, self.height = self.img_pil.size
-		self.MIN_area_size, self.MAX_area_size  = self.height // 400, self.height // 50 #NOT CONSTANT
+		self.MIN_area_size, self.MAX_area_size  = self.height // 400, self.height // 20 #NOT CONSTANT
 		self.variant = []
 
 	def add_to_list (self, INN):
@@ -128,7 +128,7 @@ class INN_parser:
 			res = ""
 			can_be_INN = []
 			if len(posible_variants) - variant >= 12:
-				for i in range(min(variant - 30, 0), min(len(posible_variants), variant + 30)):
+				for i in range(max(variant - 30, 0), min(len(posible_variants), variant + 30)):
 					if abs(areas[0][1] - posible_variants[i][1]) < self.MIN_area_size and areas[0][0] < posible_variants[i][0]:
 						areas.append(posible_variants[i])
 				areas.sort(key=lambda x: x[0])
@@ -182,11 +182,18 @@ class INN_parser:
 							color_background = digit.getpixel((0,0))
 							img_with_background = digit
 
-							img_with_background = Image.new('RGB', (self.MAX_area_size * 2, self.MAX_area_size * 2),  (255, 255, 255)) #REWORK NO Const
-							img_with_background.paste(digit, (self.MAX_area_size // 2, self.MAX_area_size // 2)) #insert digit to mid
+							img_with_background = Image.new('RGB', ((self.MAX_x - self.MIN_x + 1)  * 2, (self.MAX_y - self.MIN_y + 1) * 2),  (255, 255, 255)) #REWORK NO Const
+							img_with_background.paste(digit, ((self.MAX_x - self.MIN_x + 1)  // 2, (self.MAX_y - self.MIN_y + 1) // 2)) #insert digit to mid
 							
 							custom_oem_psm_config_one_char = r'--oem 1 --psm 10'
 
+							X = (self.MAX_x - self.MIN_x + 1)  * 2
+							Y = (self.MAX_y - self.MIN_y + 1) * 2
+							
+							NEW_X = 60
+							NEW_Y = int(60 * (Y/X))
+
+							img_with_background = img_with_background.resize((NEW_X, NEW_Y), Image.ANTIALIAS)
 							text = pytesseract.image_to_string(img_with_background, 'rus', config=custom_oem_psm_config_one_char)
 							#print(text)
 
@@ -203,6 +210,7 @@ class INN_parser:
 								else:
 									cnt_digits = 1
 							#img_with_background.save("test/" + str(self.threshold) + '_' + str(int(self.MIN_y / 100)) + '_' + str(self.MIN_x) + ".jpg")
+							#print("test/" + str(self.threshold) + '_' + str(int(self.MIN_y / 100)) + '_' + str(self.MIN_x) + ".jpg = ", text, "  " + str(self.MIN_y))
 
 						if (model_for_digit_recognition == "NN"):
 							digit = self.current_cropped_img_pil_BW.crop((self.MIN_x - 1, self.MIN_y - 1, self.MAX_x + 2, self.MAX_y + 2))

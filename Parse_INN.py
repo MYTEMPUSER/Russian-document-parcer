@@ -143,10 +143,8 @@ class INN_parser:
 								res_description.append(item)
 						#print(res)
 						if len(res) == self.INN_len and self.__validate_INN(res):
-							if res.count('0') + res.count('8') >= 7:
-								print ("So math 8 and 0: ", res)
-							else:
-								print(res)
+							if res.count('0') + res.count('8') < 9:
+								#print(res)
 								return res, res_description
 						if len(res) == self.INN_len:
 							print("NOT VALID INN:", res)
@@ -222,9 +220,9 @@ class INN_parser:
 		#print(len(posible_areas))
 		res = self.__select_areas(posible_areas)[0]
 		if res != '':
-			print(res)
-			return True
-		return False
+			#print(res)
+			return res
+		return  False
 
 
 	def find_INN(self):
@@ -236,7 +234,8 @@ class INN_parser:
 			
 			find = self.__start_dfs()
 
-			self.current_cropped_img_pil.save("test/INN_dfs" + str(self.threshold) + ".jpg")
+			#self.current_cropped_img_pil.save("test/INN_dfs" + str(self.threshold) + ".jpg")
 			cv2.imwrite("test/INN" + str(self.threshold) + ".jpg", self.current_cropped_img_cv)
 			if (find):
-				return
+				return find
+		return False

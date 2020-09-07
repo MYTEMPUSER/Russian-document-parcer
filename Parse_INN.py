@@ -38,7 +38,7 @@ class INN_parser:
 		self.INN_validate_coefs2 = [3, 7, 2, 4, 10, 3, 5, 9, 4, 6, 8, 0]
 		self.NN_model = dr.digit_recognizer()
 
-	def validate_INN (self, INN):
+	def __validate_INN (self, INN):
 		check_sum1 = 0
 		check_sum2 = 0
 		for sym_num in range(len(INN)):
@@ -64,11 +64,7 @@ class INN_parser:
 		self.MIN_area_size, self.MAX_area_size  = self.height // 400, self.height // 20 #NOT CONSTANT
 		self.variant = []
 
-	def add_to_list (self, INN):
-		if (len(INN) == self.INN_len):
-			self.variant.append(INN)
-
-	def recover_digits (self, digit_line):
+	def __recover_digits (self, digit_line):
 		for i in range(len(digit_line)):
 			digit_line = digit_line.replace("з", '3')
 			digit_line = digit_line.replace("З", '3')
@@ -80,7 +76,7 @@ class INN_parser:
 			digit_line = digit_line.replace("Т", '7')
 		return digit_line
 
-	def try_parse_iz_image (self, text):
+	def __try_parse_iz_image (self, text):
 		INN = ""
 		start_inn = False
 		for sym in text:
@@ -92,18 +88,18 @@ class INN_parser:
 		#print("EZ PARCE INN:", INN)
 		return INN
 
-	def check_inner_area(self, MIN_x, MAX_x, MIN_y, MAX_y):
+	def __check_inner_area(self, MIN_x, MAX_x, MIN_y, MAX_y):
 		return (1 < (MAX_y - MIN_y + 1) / (MAX_x - MIN_x + 1) < 4 and MAX_y - MIN_y > self.MIN_area_size and MAX_y - MIN_y < self.MAX_area_size)
 
-	def check_range(self, i, j, w, h):
+	def __check_range(self, i, j, w, h):
 		return not((j >= h) or (i >= w) or (j < 0) or (i < 0))
 
-	def check_color (self, pix):#IF image BW rework
+	def __check_color (self, pix):#IF image BW rework
 		R,G,B = pix
 		LuminanceB = (0.299*R + 0.587*G + 0.114*B)
 		return LuminanceB == 0
 
-	def dfs (self, i, j, color, cnt): #NEED BFS?
+	def __dfs (self, i, j, color, cnt): #NEED BFS?
 		self.MIN_x = min(self.MIN_x, i)
 		self.MAX_x = max(self.MAX_x, i)
 		self.MIN_y = min(self.MIN_y, j)
@@ -118,10 +114,10 @@ class INN_parser:
 		self.used[i][j] = True
 		#self.current_cropped_img_pil_BW.putpixel((i, j), color)
 		for d in range(4):
-			if (self.check_range(i + self.dx[d], j + self.dy[d], width, height) and self.check_color(self.current_cropped_img_pil_BW.getpixel((i + self.dx[d], j + self.dy[d]))) and not self.used[i + self.dx[d]][j + self.dy[d]]):
-				self.dfs(i + self.dx[d], j + self.dy[d], color, cnt + 1)
+			if (self.__check_range(i + self.dx[d], j + self.dy[d], width, height) and self.__check_color(self.current_cropped_img_pil_BW.getpixel((i + self.dx[d], j + self.dy[d]))) and not self.used[i + self.dx[d]][j + self.dy[d]]):
+				self.__dfs(i + self.dx[d], j + self.dy[d], color, cnt + 1)
 
-	def select_areas(self, posible_variants):
+	def __select_areas(self, posible_variants):
 		posible_variants.sort(key=lambda x: x[1])
 		for variant in range(len(posible_variants)):
 			areas = [posible_variants[variant]]
@@ -146,7 +142,7 @@ class INN_parser:
 								res += item[4]
 								res_description.append(item)
 						#print(res)
-						if len(res) == self.INN_len and self.validate_INN(res):
+						if len(res) == self.INN_len and self.__validate_INN(res):
 							if res.count('0') + res.count('8') >= 7:
 								print ("So math 8 and 0: ", res)
 							else:
@@ -156,7 +152,7 @@ class INN_parser:
 							print("NOT VALID INN:", res)
 		return "", []
 
-	def start_dfs (self, model_for_digit_recognition = "Teserract"):
+	def __start_dfs (self, model_for_digit_recognition = "Teserract"):
 		self.current_cropped_img_pil_BW = self.converter.convert_cv2_to_PIL(self.current_cropped_img_cv)
 		dig_cnt = 0
 		width, height = self.current_cropped_img_pil.size
@@ -168,15 +164,15 @@ class INN_parser:
 		print(self.threshold)
 		for j in range(height):
 			for i in range(width):
-				if (self.check_color(self.current_cropped_img_pil_BW.getpixel((i,j))) and not self.used[i][j]):
+				if (self.__check_color(self.current_cropped_img_pil_BW.getpixel((i,j))) and not self.used[i][j]):
 					self.MIN_x = self.MAX_x = i
 					self.MIN_y = self.MAX_y = j
 					if (self.current_cropped_img_pil.mode == "RGB"):
-						self.dfs(i, j, (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)), 0)
+						self.__dfs(i, j, (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)), 0)
 					else:
-						self.dfs(i, j, (random.randint(0, 255)), 0)
+						self.__dfs(i, j, (random.randint(0, 255)), 0)
 
-					if (self.check_inner_area(self.MIN_x, self.MAX_x, self.MIN_y, self.MAX_y)):
+					if (self.__check_inner_area(self.MIN_x, self.MAX_x, self.MIN_y, self.MAX_y)):
 						if (model_for_digit_recognition == "Teserract"):
 							digit = self.current_cropped_img_pil_BW.crop((self.MIN_x - 2, self.MIN_y - 2, self.MAX_x + 2, self.MAX_y + 2))
 							color_background = digit.getpixel((0,0))
@@ -197,7 +193,7 @@ class INN_parser:
 							text = pytesseract.image_to_string(img_with_background, 'rus', config=custom_oem_psm_config_one_char)
 							#print(text)
 
-							text = self.recover_digits(text)
+							text = self.__recover_digits(text)
 							cnt_digits = 0
 							for sym in text:
 								if sym.isdigit():
@@ -224,7 +220,7 @@ class INN_parser:
 
 
 		#print(len(posible_areas))
-		res = self.select_areas(posible_areas)[0]
+		res = self.__select_areas(posible_areas)[0]
 		if res != '':
 			print(res)
 			return True
@@ -238,7 +234,7 @@ class INN_parser:
 			self.current_cropped_img_cv = cv2.cvtColor(self.current_cropped_img_cv,cv2.COLOR_BGR2GRAY)
 			self.current_cropped_img_cv = cv2.threshold(self.current_cropped_img_cv, self.threshold, 255, cv2.THRESH_BINARY)[1]#Для обхода в глубину/ширину
 			
-			find = self.start_dfs()
+			find = self.__start_dfs()
 
 			self.current_cropped_img_pil.save("test/INN_dfs" + str(self.threshold) + ".jpg")
 			cv2.imwrite("test/INN" + str(self.threshold) + ".jpg", self.current_cropped_img_cv)
